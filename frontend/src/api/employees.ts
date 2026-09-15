@@ -10,7 +10,6 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -62,6 +61,6 @@ export async function deleteEmployee(id: string): Promise<null> {
 }
 
 export async function getHealth(): Promise<null> {
-  const res = await apiClient.get<ApiResponse<null>>("/health");
+  const res = await apiClient.get<ApiResponse<null>>("/healthz");
   return res.data.data;
 }
