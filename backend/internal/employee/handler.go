@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/subhranil002/GO-Cognito/internal/middleware"
 	"github.com/subhranil002/GO-Cognito/pkg/response"
 )
 
@@ -19,8 +18,8 @@ func NewHandler(client *EmployeeClient) *Handler {
 	return &Handler{client: client}
 }
 
-// Fetch all employees
-func (h *Handler) List(w http.ResponseWriter, r *http.Request, _ string, _ *middleware.AccessTokenClaims) {
+// List fetches all employees.
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	employees, err := h.client.List(r.Context())
 	if err != nil {
 		handleError(w, err)
@@ -30,8 +29,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request, _ string, _ *midd
 	response.JSON(w, http.StatusOK, true, "employees retrieved successfully", employees)
 }
 
-// Fetch single employee by ID
-func (h *Handler) Get(w http.ResponseWriter, r *http.Request, _ string, _ *middleware.AccessTokenClaims) {
+// Get fetches a single employee by ID.
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		response.Error(w, http.StatusBadRequest, "id is required")
@@ -47,8 +46,8 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request, _ string, _ *middl
 	response.JSON(w, http.StatusOK, true, "employee retrieved successfully", emp)
 }
 
-// Create new employee
-func (h *Handler) Create(w http.ResponseWriter, r *http.Request, _ string, _ *middleware.AccessTokenClaims) {
+// Create creates a new employee.
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateEmployeeRequest
 
 	if err := readJSON(w, r, &req); err != nil {
@@ -64,8 +63,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request, _ string, _ *mi
 	response.JSON(w, http.StatusCreated, true, "employee created successfully", emp)
 }
 
-// Update existing employee
-func (h *Handler) Update(w http.ResponseWriter, r *http.Request, _ string, _ *middleware.AccessTokenClaims) {
+// Update applies a partial update to an existing employee.
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		response.Error(w, http.StatusBadRequest, "id is required")
@@ -87,8 +86,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request, _ string, _ *mi
 	response.JSON(w, http.StatusOK, true, "employee updated successfully", emp)
 }
 
-// Delete employee by ID
-func (h *Handler) Delete(w http.ResponseWriter, r *http.Request, _ string, _ *middleware.AccessTokenClaims) {
+// Delete removes an employee by ID.
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		response.Error(w, http.StatusBadRequest, "id is required")
@@ -103,7 +102,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request, _ string, _ *mi
 	response.JSON(w, http.StatusOK, true, "employee deleted successfully", nil)
 }
 
-// Parse and validate request JSON body
+// readJSON parses and validates the JSON request body.
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	defer r.Body.Close()
@@ -120,13 +119,13 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	return nil
 }
 
-// Handle error response to client
+// handleError maps backend errors to appropriate HTTP responses.
 func handleError(w http.ResponseWriter, err error) {
 	slog.Error("employee request failed", "error", err)
 
 	var be *backendError
 	if errors.As(err, &be) {
-		// Forward status code and message from CRUD backend
+		// Forward status code and message from the upstream CRUD backend.
 		response.Error(w, be.StatusCode, be.Message)
 		return
 	}

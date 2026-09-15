@@ -12,21 +12,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Config holds runtime configuration
 type Config struct {
-	AppEnv string
-
-	HTTPAddr string
-
-	AWSRegion string
-
-	CognitoUserPoolID   string
-	CognitoClientID     string
-	CognitoClientSecret string
-
-	EmployeeAPIURL string
-	AllowedOrigin  string
+	AppEnv            string
+	HTTPAddr          string
+	AWSRegion         string
+	CognitoUserPoolID string
+	CognitoClientID   string
+	EmployeeAPIURL    string
+	AllowedOrigin     string
 }
 
+// Load reads config from Secrets Manager or environment variables
 func Load() (Config, error) {
 	_ = godotenv.Load()
 
@@ -44,24 +41,18 @@ func Load() (Config, error) {
 
 	secretARN := os.Getenv("BACKEND_SECRET_ARN")
 
-	// AWS: load configuration from Secrets Manager
+	// Load from AWS Secrets Manager if ARN is set
 	if secretARN != "" {
 		ctx := context.Background()
-		awsCfg, err := awsconfig.LoadDefaultConfig(
-			ctx,
-			awsconfig.WithRegion(cfg.AWSRegion),
-		)
+		awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.AWSRegion))
 		if err != nil {
 			return Config{}, fmt.Errorf("load aws config for secrets manager: %w", err)
 		}
 
 		smClient := secretsmanager.NewFromConfig(awsCfg)
-		result, err := smClient.GetSecretValue(
-			ctx,
-			&secretsmanager.GetSecretValueInput{
-				SecretId: aws.String(secretARN),
-			},
-		)
+		result, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+			SecretId: aws.String(secretARN),
+		})
 		if err != nil {
 			return Config{}, fmt.Errorf("get secret value: %w", err)
 		}
@@ -71,7 +62,6 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("parse secret string: %w", err)
 		}
 
-		// Helper to fetch keys case-insensitively or with different common formats
 		getSecret := func(keys ...string) string {
 			for _, k := range keys {
 				if val, ok := secret[k]; ok {
@@ -83,22 +73,18 @@ func Load() (Config, error) {
 
 		cfg.CognitoUserPoolID = getSecret("COGNITO_USER_POOL_ID", "cognitoUserPoolId")
 		cfg.CognitoClientID = getSecret("COGNITO_CLIENT_ID", "cognitoClientId")
-		cfg.CognitoClientSecret = getSecret("COGNITO_CLIENT_SECRET", "cognitoClientSecret")
 		cfg.EmployeeAPIURL = getSecret("EMPLOYEE_API_URL", "employeeApiUrl")
 		cfg.AllowedOrigin = getSecret("ALLOWED_ORIGIN", "allowedOrigin")
 		cfg.HTTPAddr = getSecret("HTTP_ADDR", "httpAddr")
-
 	} else {
-		// Local: load from environment
+		// Load from environment variables
 		cfg.CognitoUserPoolID = os.Getenv("COGNITO_USER_POOL_ID")
 		cfg.CognitoClientID = os.Getenv("COGNITO_CLIENT_ID")
-		cfg.CognitoClientSecret = os.Getenv("COGNITO_CLIENT_SECRET")
 		cfg.EmployeeAPIURL = os.Getenv("EMPLOYEE_API_URL")
 		cfg.AllowedOrigin = os.Getenv("ALLOWED_ORIGIN")
 		cfg.HTTPAddr = os.Getenv("HTTP_ADDR")
 	}
 
-	// Apply defaults and validate
 	if cfg.HTTPAddr == "" {
 		cfg.HTTPAddr = ":3000"
 	}
@@ -112,9 +98,6 @@ func Load() (Config, error) {
 	if cfg.CognitoClientID == "" {
 		return Config{}, fmt.Errorf("COGNITO_CLIENT_ID is required")
 	}
-	if cfg.CognitoClientSecret == "" {
-		return Config{}, fmt.Errorf("COGNITO_CLIENT_SECRET is required")
-	}
 	if cfg.EmployeeAPIURL == "" {
 		return Config{}, fmt.Errorf("EMPLOYEE_API_URL is required")
 	}
@@ -122,10 +105,7 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
+// CognitoIssuer returns the issuer URL for Cognito
 func (c Config) CognitoIssuer() string {
-	return fmt.Sprintf(
-		"https://cognito-idp.%s.amazonaws.com/%s",
-		c.AWSRegion,
-		c.CognitoUserPoolID,
-	)
+	return fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s", c.AWSRegion, c.CognitoUserPoolID)
 }
