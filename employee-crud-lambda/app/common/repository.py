@@ -2,7 +2,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import ReturnDocument
 
-from .config import MONGODB_COLLECTION
+from .config import employee_collection, user_collection
 from .database import get_database
 
 
@@ -11,7 +11,7 @@ class EmployeeRepository:
     def __init__(self):
         database = get_database()
         self.collection = database[
-            MONGODB_COLLECTION
+            employee_collection
         ]
 
     def find_all(self):
@@ -112,3 +112,70 @@ class EmployeeRepository:
         )
 
         return employee
+
+
+class UserRepository:
+
+    def __init__(self):
+        database = get_database()
+        self.collection = database[
+            user_collection
+        ]
+
+    def find_all(self):
+        users = list(
+            self.collection
+            .find({})
+            .sort("name", 1)
+        )
+
+        return [
+            self._serialize(user)
+            for user in users
+        ]
+
+    def find_by_id(self, user_id):
+        try:
+            object_id = ObjectId(user_id)
+        except InvalidId:
+            return None
+
+        user = self.collection.find_one(
+            {
+                "_id": object_id
+            }
+        )
+
+        if user is None:
+            return None
+
+        return self._serialize(user)
+
+    def find_by_email(self, email):
+        user = self.collection.find_one(
+            {
+                "email": email
+            }
+        )
+
+        if user is None:
+            return None
+
+        return self._serialize(user)
+
+    def insert(self, user):
+        result = self.collection.insert_one(
+            user
+        )
+
+        user["_id"] = str(result.inserted_id)
+
+        return user
+
+    @staticmethod
+    def _serialize(user):
+        user["_id"] = str(
+            user["_id"]
+        )
+
+        return user

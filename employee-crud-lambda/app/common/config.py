@@ -37,9 +37,19 @@ def get_mongodb_config():
         return {
             "uri": mongodb_uri,
             "database": database,
-            "collection": os.getenv(
-                "MONGODB_COLLECTION",
-                "employees",
+            "employee_collection": secret.get(
+                "employee_collection",
+                os.getenv(
+                    "MONGODB_EMPLOYEE_COLLECTION",
+                    "employees",
+                ),
+            ),
+            "user_collection": secret.get(
+                "user_collection",
+                os.getenv(
+                    "MONGODB_USER_COLLECTION",
+                    "users",
+                ),
             ),
         }
 
@@ -58,9 +68,13 @@ def get_mongodb_config():
             "MONGODB_DATABASE",
             "employee_db",
         ),
-        "collection": os.getenv(
-            "MONGODB_COLLECTION",
+        "employee_collection": os.getenv(
+            "MONGODB_EMPLOYEE_COLLECTION",
             "employees",
+        ),
+        "user_collection": os.getenv(
+            "MONGODB_USER_COLLECTION",
+            "users",
         ),
     }
 
@@ -69,4 +83,5 @@ mongodb_config = get_mongodb_config()
 
 MONGODB_URI = mongodb_config["uri"]
 MONGODB_DATABASE = mongodb_config["database"]
-MONGODB_COLLECTION = mongodb_config["collection"]
+employee_collection = mongodb_config["employee_collection"]
+user_collection = mongodb_config["user_collection"]

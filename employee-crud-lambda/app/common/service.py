@@ -1,7 +1,6 @@
 import re
 
-
-from .repository import EmployeeRepository
+from .repository import EmployeeRepository, UserRepository
 
 
 EMAIL_REGEX = re.compile(
@@ -15,6 +14,14 @@ class InvalidEmployeeError(Exception):
 
 
 class EmployeeNotFoundError(Exception):
+    pass
+
+
+class InvalidUserError(Exception):
+    pass
+
+
+class UserNotFoundError(Exception):
     pass
 
 
@@ -39,7 +46,6 @@ class EmployeeService:
         return employee
 
     def create(self, data):
-
         self._validate_name(
             data.get("name")
         )
@@ -100,7 +106,6 @@ class EmployeeService:
         employee_id,
         data,
     ):
-
         if not isinstance(data, dict):
             raise InvalidEmployeeError(
                 "request body must be a JSON object"
@@ -180,7 +185,6 @@ class EmployeeService:
         return employee
 
     def delete(self, employee_id):
-
         deleted = (
             self.repository.delete_by_id(
                 employee_id
@@ -192,7 +196,6 @@ class EmployeeService:
 
     @staticmethod
     def _validate_name(name):
-
         if not isinstance(name, str):
             raise InvalidEmployeeError(
                 "name is required"
@@ -205,7 +208,6 @@ class EmployeeService:
 
     @staticmethod
     def _validate_email(email):
-
         if not isinstance(email, str):
             raise InvalidEmployeeError(
                 "email is required"
@@ -225,7 +227,6 @@ class EmployeeService:
 
     @staticmethod
     def _validate_department(department):
-
         if not isinstance(
             department,
             str,
@@ -241,7 +242,6 @@ class EmployeeService:
 
     @staticmethod
     def _validate_salary(salary):
-
         if salary is None:
             raise InvalidEmployeeError(
                 "salary is required"
@@ -257,4 +257,93 @@ class EmployeeService:
         if salary < 0:
             raise InvalidEmployeeError(
                 "salary cannot be negative"
+            )
+
+
+class UserService:
+
+    def __init__(self):
+        self.repository = UserRepository()
+
+    def list(self):
+        return self.repository.find_all()
+
+    def get(self, user_id):
+        user = (
+            self.repository.find_by_id(
+                user_id
+            )
+        )
+
+        if user is None:
+            raise UserNotFoundError()
+
+        return user
+
+    def create(self, data):
+        self._validate_name(
+            data.get("name")
+        )
+
+        self._validate_email(
+            data.get("email")
+        )
+
+        name = data["name"].strip()
+
+        email = (
+            data["email"]
+            .strip()
+            .lower()
+        )
+
+        existing = (
+            self.repository.find_by_email(
+                email
+            )
+        )
+
+        if existing is not None:
+            raise InvalidUserError(
+                "user with this email already exists"
+            )
+
+        user = {
+            "name": name,
+            "email": email,
+        }
+
+        return self.repository.insert(
+            user
+        )
+
+    @staticmethod
+    def _validate_name(name):
+        if not isinstance(name, str):
+            raise InvalidUserError(
+                "name is required"
+            )
+
+        if not name.strip():
+            raise InvalidUserError(
+                "name is required"
+            )
+
+    @staticmethod
+    def _validate_email(email):
+        if not isinstance(email, str):
+            raise InvalidUserError(
+                "email is required"
+            )
+
+        email = email.strip().lower()
+
+        if not email:
+            raise InvalidUserError(
+                "email is required"
+            )
+
+        if not EMAIL_REGEX.match(email):
+            raise InvalidUserError(
+                "invalid email format"
             )
