@@ -30,13 +30,14 @@ class EmployeeService:
     def __init__(self):
         self.repository = EmployeeRepository()
 
-    def list(self):
-        return self.repository.find_all()
+    def list(self, created_by):
+        return self.repository.find_all(created_by)
 
-    def get(self, employee_id):
+    def get(self, employee_id, created_by):
         employee = (
             self.repository.find_by_id(
-                employee_id
+                employee_id,
+                created_by
             )
         )
 
@@ -46,6 +47,14 @@ class EmployeeService:
         return employee
 
     def create(self, data):
+        self._validate_emp_id(
+            data.get("empID")
+        )
+
+        self._validate_created_by(
+            data.get("createdBy")
+        )
+
         self._validate_name(
             data.get("name")
         )
@@ -61,6 +70,9 @@ class EmployeeService:
         self._validate_salary(
             data.get("salary")
         )
+
+        emp_id = data["empID"].strip()
+        created_by = data["createdBy"].strip()
 
         name = data["name"].strip()
 
@@ -81,7 +93,8 @@ class EmployeeService:
 
         existing = (
             self.repository.find_by_email(
-                email
+                email,
+                created_by
             )
         )
 
@@ -91,6 +104,8 @@ class EmployeeService:
             )
 
         employee = {
+            "empID": emp_id,
+            "createdBy": created_by,
             "name": name,
             "email": email,
             "department": department,
@@ -105,6 +120,7 @@ class EmployeeService:
         self,
         employee_id,
         data,
+        created_by,
     ):
         if not isinstance(data, dict):
             raise InvalidEmployeeError(
@@ -135,7 +151,8 @@ class EmployeeService:
 
             existing = (
                 self.repository.find_by_email(
-                    email
+                    email,
+                    created_by
                 )
             )
 
@@ -176,6 +193,7 @@ class EmployeeService:
             self.repository.update_by_id(
                 employee_id,
                 update,
+                created_by
             )
         )
 
@@ -184,10 +202,11 @@ class EmployeeService:
 
         return employee
 
-    def delete(self, employee_id):
+    def delete(self, employee_id, created_by):
         deleted = (
             self.repository.delete_by_id(
-                employee_id
+                employee_id,
+                created_by
             )
         )
 
@@ -204,6 +223,20 @@ class EmployeeService:
         if not name.strip():
             raise InvalidEmployeeError(
                 "name is required"
+            )
+
+    @staticmethod
+    def _validate_emp_id(emp_id):
+        if not isinstance(emp_id, str) or not emp_id.strip():
+            raise InvalidEmployeeError(
+                "empID is required"
+            )
+
+    @staticmethod
+    def _validate_created_by(created_by):
+        if not isinstance(created_by, str) or not created_by.strip():
+            raise InvalidEmployeeError(
+                "createdBy is required"
             )
 
     @staticmethod

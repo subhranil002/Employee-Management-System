@@ -16,6 +16,15 @@ def handler(event, context):
             or {}
         )
 
+        headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+        created_by = headers.get("x-user-id")
+
+        if not created_by:
+            return error(
+                400,
+                "x-user-id header is required",
+            )
+
         employee_id = path_parameters.get(
             "id"
         )
@@ -23,7 +32,8 @@ def handler(event, context):
         if employee_id:
 
             employee = service.get(
-                employee_id
+                employee_id,
+                created_by
             )
 
             return success(
@@ -32,7 +42,7 @@ def handler(event, context):
                 employee,
             )
 
-        employees = service.list()
+        employees = service.list(created_by)
 
         return success(
             200,

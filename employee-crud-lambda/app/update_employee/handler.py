@@ -40,10 +40,20 @@ def handler(event, context):
 
         if isinstance(body, str):
             body = json.loads(body)
+            
+        headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+        created_by = headers.get("x-user-id")
+
+        if not created_by:
+            return error(
+                400,
+                "x-user-id header is required",
+            )
 
         employee = service.update(
             employee_id,
             body,
+            created_by
         )
 
         return success(

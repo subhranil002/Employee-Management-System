@@ -14,10 +14,11 @@ class EmployeeRepository:
             employee_collection
         ]
 
-    def find_all(self):
+    def find_all(self, created_by):
+        query = {"createdBy": created_by}
         employees = list(
             self.collection
-            .find({})
+            .find(query)
             .sort("name", 1)
         )
 
@@ -26,7 +27,7 @@ class EmployeeRepository:
             for employee in employees
         ]
 
-    def find_by_id(self, employee_id):
+    def find_by_id(self, employee_id, created_by):
         try:
             object_id = ObjectId(employee_id)
         except InvalidId:
@@ -34,7 +35,8 @@ class EmployeeRepository:
 
         employee = self.collection.find_one(
             {
-                "_id": object_id
+                "_id": object_id,
+                "createdBy": created_by
             }
         )
 
@@ -43,12 +45,12 @@ class EmployeeRepository:
 
         return self._serialize(employee)
 
-    def find_by_email(self, email):
-        employee = self.collection.find_one(
-            {
-                "email": email
-            }
-        )
+    def find_by_email(self, email, created_by=None):
+        query = {"email": email}
+        if created_by:
+            query["createdBy"] = created_by
+            
+        employee = self.collection.find_one(query)
 
         if employee is None:
             return None
@@ -68,6 +70,7 @@ class EmployeeRepository:
         self,
         employee_id,
         update,
+        created_by,
     ):
         try:
             object_id = ObjectId(employee_id)
@@ -77,7 +80,8 @@ class EmployeeRepository:
         employee = (
             self.collection.find_one_and_update(
                 {
-                    "_id": object_id
+                    "_id": object_id,
+                    "createdBy": created_by
                 },
                 {
                     "$set": update
@@ -91,7 +95,7 @@ class EmployeeRepository:
 
         return self._serialize(employee)
 
-    def delete_by_id(self, employee_id):
+    def delete_by_id(self, employee_id, created_by):
         try:
             object_id = ObjectId(employee_id)
         except InvalidId:
@@ -99,7 +103,8 @@ class EmployeeRepository:
 
         result = self.collection.delete_one(
             {
-                "_id": object_id
+                "_id": object_id,
+                "createdBy": created_by
             }
         )
 

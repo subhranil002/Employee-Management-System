@@ -26,8 +26,17 @@ def handler(event, context):
                 400,
                 "employee id is required",
             )
+            
+        headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+        created_by = headers.get("x-user-id")
 
-        service.delete(employee_id)
+        if not created_by:
+            return error(
+                400,
+                "x-user-id header is required",
+            )
+
+        service.delete(employee_id, created_by)
 
         return success(
             200,
