@@ -57,6 +57,19 @@ class EmployeeRepository:
 
         return self._serialize(employee)
 
+    def find_by_emp_id(self, emp_id, created_by):
+        employee = self.collection.find_one(
+            {
+                "empID": emp_id,
+                "createdBy": created_by
+            }
+        )
+
+        if employee is None:
+            return None
+
+        return self._serialize(employee)
+
     def insert(self, employee):
         result = self.collection.insert_one(
             employee

@@ -37,6 +37,10 @@ class EmployeeService:
         except ValidationError as e:
             raise InvalidEmployeeError(str(e))
 
+        existing_emp = self.repository.find_by_emp_id(validated.empID, validated.createdBy)
+        if existing_emp is not None:
+            raise InvalidEmployeeError("employee with this empID already exists")
+
         email = validated.email.lower()
         existing = self.repository.find_by_email(email, validated.createdBy)
         if existing is not None:
@@ -89,6 +93,12 @@ class UserService:
 
     def get(self, user_id):
         user = self.repository.find_by_id(user_id)
+        if user is None:
+            raise UserNotFoundError()
+        return user
+
+    def get_by_email(self, email):
+        user = self.repository.find_by_email(email.lower())
         if user is None:
             raise UserNotFoundError()
         return user

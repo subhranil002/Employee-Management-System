@@ -11,19 +11,19 @@ service = UserService()
 def handler(event, context):
 
     try:
-        path_parameters = (
-            event.get("pathParameters")
+        query_parameters = (
+            event.get("queryStringParameters")
             or {}
         )
 
-        user_id = path_parameters.get(
-            "id"
+        email = query_parameters.get(
+            "email"
         )
 
-        if user_id:
+        if email:
 
-            user = service.get(
-                user_id
+            user = service.get_by_email(
+                email
             )
 
             return success(
