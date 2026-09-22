@@ -5,14 +5,15 @@ import (
 
 	"github.com/subhranil002/GO-Cognito/internal/employee"
 	"github.com/subhranil002/GO-Cognito/internal/middleware"
+	"github.com/subhranil002/GO-Cognito/internal/user"
 	"github.com/subhranil002/GO-Cognito/pkg/response"
 )
 
-// Setup registers all application routes and returns the configured ServeMux.
-// All employee routes are protected by JWT authentication via RequireAuth.
+// Setup registers application routes and returns the configured ServeMux
 func Setup(
-	tokenVerifier *middleware.TokenVerifier,
+	verifier *middleware.Verifier,
 	employeeHandler *employee.Handler,
+	userHandler *user.Handler,
 ) *http.ServeMux {
 
 	mux := http.NewServeMux()
@@ -22,12 +23,15 @@ func Setup(
 		response.JSON(w, http.StatusOK, true, "ok", nil)
 	})
 
-	// Employee CRUD routes (JWT-protected)
-	mux.HandleFunc("GET /employees", tokenVerifier.RequireAuth(employeeHandler.List))
-	mux.HandleFunc("POST /employees", tokenVerifier.RequireAuth(employeeHandler.Create))
-	mux.HandleFunc("GET /employees/{id}", tokenVerifier.RequireAuth(employeeHandler.Get))
-	mux.HandleFunc("PATCH /employees/{id}", tokenVerifier.RequireAuth(employeeHandler.Update))
-	mux.HandleFunc("DELETE /employees/{id}", tokenVerifier.RequireAuth(employeeHandler.Delete))
+	// Profile route
+	mux.HandleFunc("GET /profile", verifier.RequireAuth(userHandler.Profile))
+
+	// Employee CRUD routes
+	mux.HandleFunc("GET /employees", verifier.RequireAuth(employeeHandler.List))
+	mux.HandleFunc("POST /employees", verifier.RequireAuth(employeeHandler.Create))
+	mux.HandleFunc("GET /employees/{id}", verifier.RequireAuth(employeeHandler.Get))
+	mux.HandleFunc("PATCH /employees/{id}", verifier.RequireAuth(employeeHandler.Update))
+	mux.HandleFunc("DELETE /employees/{id}", verifier.RequireAuth(employeeHandler.Delete))
 
 	return mux
 }

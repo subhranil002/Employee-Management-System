@@ -19,7 +19,7 @@ type Config struct {
 	AWSRegion         string
 	CognitoUserPoolID string
 	CognitoClientID   string
-	EmployeeAPIURL    string
+	EMSAPIURL         string
 	AllowedOrigin     string
 }
 
@@ -73,14 +73,14 @@ func Load() (Config, error) {
 
 		cfg.CognitoUserPoolID = getSecret("COGNITO_USER_POOL_ID", "cognitoUserPoolId")
 		cfg.CognitoClientID = getSecret("COGNITO_CLIENT_ID", "cognitoClientId")
-		cfg.EmployeeAPIURL = getSecret("EMPLOYEE_API_URL", "employeeApiUrl")
+		cfg.EMSAPIURL = getSecret("EMS_API_URL", "EMSAPIURL")
 		cfg.AllowedOrigin = getSecret("ALLOWED_ORIGIN", "allowedOrigin")
 		cfg.HTTPAddr = getSecret("HTTP_ADDR", "httpAddr")
 	} else {
 		// Load from environment variables
 		cfg.CognitoUserPoolID = os.Getenv("COGNITO_USER_POOL_ID")
 		cfg.CognitoClientID = os.Getenv("COGNITO_CLIENT_ID")
-		cfg.EmployeeAPIURL = os.Getenv("EMPLOYEE_API_URL")
+		cfg.EMSAPIURL = os.Getenv("EMS_API_URL")
 		cfg.AllowedOrigin = os.Getenv("ALLOWED_ORIGIN")
 		cfg.HTTPAddr = os.Getenv("HTTP_ADDR")
 	}
@@ -98,8 +98,8 @@ func Load() (Config, error) {
 	if cfg.CognitoClientID == "" {
 		return Config{}, fmt.Errorf("COGNITO_CLIENT_ID is required")
 	}
-	if cfg.EmployeeAPIURL == "" {
-		return Config{}, fmt.Errorf("EMPLOYEE_API_URL is required")
+	if cfg.EMSAPIURL == "" {
+		return Config{}, fmt.Errorf("EMS_API_URL is required")
 	}
 
 	return cfg, nil

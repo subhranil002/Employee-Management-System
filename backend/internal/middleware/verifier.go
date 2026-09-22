@@ -13,12 +13,16 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/subhranil002/GO-Cognito/internal/user"
 	"github.com/subhranil002/GO-Cognito/pkg/response"
 )
 
 type contextKey string
 
-const claimsContextKey contextKey = "cognito_claims"
+const (
+	claimsContextKey contextKey = "cognito_claims"
+	userIDContextKey contextKey = "user_id"
+)
 
 // AccessTokenClaims holds decoded Cognito access token claims
 type AccessTokenClaims struct {
@@ -33,6 +37,17 @@ type AccessTokenClaims struct {
 func ClaimsFromContext(ctx context.Context) (*AccessTokenClaims, bool) {
 	claims, ok := ctx.Value(claimsContextKey).(*AccessTokenClaims)
 	return claims, ok
+}
+
+// UserIDFromContext retrieves the MongoDB user _id from request context
+func UserIDFromContext(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(userIDContextKey).(string)
+	return v, ok && v != ""
+}
+
+// UserFromContext retrieves the resolved user from request context
+func UserFromContext(ctx context.Context) (*user.User, bool) {
+	return user.FromContext(ctx)
 }
 
 type jwksResponse struct {
@@ -64,26 +79,28 @@ func parseRSAPublicKey(nB64, eB64 string) (*rsa.PublicKey, error) {
 	return &rsa.PublicKey{N: n, E: e}, nil
 }
 
-// TokenVerifier validates Cognito JWT access tokens
-type TokenVerifier struct {
+// Verifier handles token verification and user resolution
+type Verifier struct {
 	jwksURL    string
 	issuer     string
 	clientID   string
 	httpClient *http.Client
+	userClient *user.UserClient
 }
 
-// NewTokenVerifier creates a new verifier instance
-func NewTokenVerifier(issuer, clientID string) *TokenVerifier {
-	return &TokenVerifier{
+// NewVerifier creates a new verifier instance
+func NewVerifier(issuer, clientID string, userClient *user.UserClient) *Verifier {
+	return &Verifier{
 		jwksURL:    issuer + "/.well-known/jwks.json",
 		issuer:     issuer,
 		clientID:   clientID,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
+		userClient: userClient,
 	}
 }
 
-// fetchJWKS fetches keys from Cognito JWKS endpoint
-func (v *TokenVerifier) fetchJWKS(ctx context.Context) (map[string]*rsa.PublicKey, error) {
+// fetchJWKS fetches public keys from the Cognito JWKS endpoint
+func (v *Verifier) fetchJWKS(ctx context.Context) (map[string]*rsa.PublicKey, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.jwksURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build JWKS request: %w", err)
@@ -119,36 +136,8 @@ func (v *TokenVerifier) fetchJWKS(ctx context.Context) (map[string]*rsa.PublicKe
 	return keys, nil
 }
 
-// RequireAuth authenticates incoming requests using Bearer JWTs
-func (v *TokenVerifier) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		parts := strings.Fields(header)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			slog.Warn("missing or malformed Authorization header", "path", r.URL.Path)
-			response.Error(w, http.StatusUnauthorized, "missing or malformed Authorization header")
-			return
-		}
-		tokenString := parts[1]
-
-		claims, err := v.verify(r.Context(), tokenString)
-		if err != nil {
-			slog.Warn("token verification failed", "error", err, "path", r.URL.Path)
-			if strings.Contains(err.Error(), "token is expired") {
-				response.Error(w, http.StatusUnauthorized, "token_expired")
-			} else {
-				response.Error(w, http.StatusUnauthorized, "invalid access token")
-			}
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), claimsContextKey, claims)
-		next(w, r.WithContext(ctx))
-	}
-}
-
-// verify parses and validates the token signature and claims
-func (v *TokenVerifier) verify(ctx context.Context, tokenString string) (*AccessTokenClaims, error) {
+// accessTokenVerify validates the Bearer access token signature and claims
+func (v *Verifier) accessTokenVerify(ctx context.Context, tokenString string) (*AccessTokenClaims, error) {
 	keys, err := v.fetchJWKS(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fetch JWKS: %w", err)
@@ -194,4 +183,122 @@ func (v *TokenVerifier) verify(ctx context.Context, tokenString string) (*Access
 	}
 
 	return claims, nil
+}
+
+// idTokenVerify validates the ID token and extracts email and name
+func (v *Verifier) idTokenVerify(ctx context.Context, tokenString string) (email, name string, err error) {
+	keys, err := v.fetchJWKS(ctx)
+	if err != nil {
+		return "", "", fmt.Errorf("fetch JWKS: %w", err)
+	}
+
+	type idClaims struct {
+		TokenUse string `json:"token_use"`
+		Email    string `json:"email"`
+		Name     string `json:"name"`
+		jwt.RegisteredClaims
+	}
+
+	claims := &idClaims{}
+	keyFunc := func(token *jwt.Token) (any, error) {
+		kid, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, fmt.Errorf("token header missing kid")
+		}
+		key, ok := keys[kid]
+		if !ok {
+			return nil, fmt.Errorf("no JWKS key found for kid %q", kid)
+		}
+		return key, nil
+	}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		keyFunc,
+		jwt.WithValidMethods([]string{"RS256"}),
+		jwt.WithIssuer(v.issuer),
+		jwt.WithExpirationRequired(),
+		jwt.WithAudience(v.clientID),
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return "", "", fmt.Errorf("token is invalid")
+	}
+
+	if claims.TokenUse != "id" {
+		return "", "", fmt.Errorf("expected token_use=id, got %q", claims.TokenUse)
+	}
+
+	if claims.Email == "" {
+		return "", "", fmt.Errorf("id token missing email claim")
+	}
+
+	return claims.Email, claims.Name, nil
+}
+
+// getOrCreateUser retrieves existing user by email or creates a new user
+func (v *Verifier) getOrCreateUser(ctx context.Context, name, email string) (*user.User, error) {
+	return v.userClient.GetOrCreate(ctx, name, email)
+}
+
+// RequireAuth validates access token, ID token, and resolves the user in context
+func (v *Verifier) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 1. Verify access token
+		header := r.Header.Get("Authorization")
+		parts := strings.Fields(header)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			slog.Warn("missing or malformed Authorization header", "path", r.URL.Path)
+			response.Error(w, http.StatusUnauthorized, "missing or malformed Authorization header")
+			return
+		}
+
+		claims, err := v.accessTokenVerify(r.Context(), parts[1])
+		if err != nil {
+			slog.Warn("access token verification failed", "error", err, "path", r.URL.Path)
+			if strings.Contains(err.Error(), "token is expired") {
+				response.Error(w, http.StatusUnauthorized, "token_expired")
+			} else {
+				response.Error(w, http.StatusUnauthorized, "invalid access token")
+			}
+			return
+		}
+
+		// 2. Verify ID token
+		idTokenStr := r.Header.Get("X-Id-Token")
+		if idTokenStr == "" {
+			response.Error(w, http.StatusBadRequest, "X-Id-Token header is required")
+			return
+		}
+
+		email, name, err := v.idTokenVerify(r.Context(), idTokenStr)
+		if err != nil {
+			slog.Warn("id token verification failed", "error", err, "path", r.URL.Path)
+			if strings.Contains(err.Error(), "token is expired") {
+				response.Error(w, http.StatusUnauthorized, "token_expired")
+			} else {
+				response.Error(w, http.StatusUnauthorized, "invalid id token")
+			}
+			return
+		}
+
+		// 3. Resolve user in DB (get or create)
+		u, err := v.getOrCreateUser(r.Context(), name, email)
+		if err != nil {
+			slog.Error("user resolution failed", "error", err, "email", email, "path", r.URL.Path)
+			response.Error(w, http.StatusInternalServerError, "failed to resolve user")
+			return
+		}
+
+		// Inject claims, user, and user ID into request context
+		ctx := context.WithValue(r.Context(), claimsContextKey, claims)
+		ctx = user.WithContext(ctx, u)
+		ctx = context.WithValue(ctx, userIDContextKey, u.ID)
+
+		next(w, r.WithContext(ctx))
+	}
 }

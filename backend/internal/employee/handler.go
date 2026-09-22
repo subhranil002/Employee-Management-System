@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
 
+	"github.com/subhranil002/GO-Cognito/internal/middleware"
 	"github.com/subhranil002/GO-Cognito/pkg/response"
 )
 
@@ -18,9 +20,11 @@ func NewHandler(client *EmployeeClient) *Handler {
 	return &Handler{client: client}
 }
 
-// List fetches all employees.
+// List fetches all employees for the authenticated user.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	employees, err := h.client.List(r.Context())
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	employees, err := h.client.List(r.Context(), userID)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -29,7 +33,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employees retrieved successfully", employees)
 }
 
-// Get fetches a single employee by ID.
+// Get fetches a single employee by ID for the authenticated user.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -37,7 +41,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	emp, err := h.client.Get(r.Context(), id)
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	emp, err := h.client.Get(r.Context(), userID, id)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -46,7 +52,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employee retrieved successfully", emp)
 }
 
-// Create creates a new employee.
+// Create creates a new employee for the authenticated user.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateEmployeeRequest
 
@@ -54,7 +60,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	emp, err := h.client.Create(r.Context(), req)
+	if matched, _ := regexp.MatchString(`^EMP-\d{3}$`, req.EmpID); !matched {
+		response.Error(w, http.StatusBadRequest, "empID must be in the format EMP-123 (EMP- followed by exactly 3 digits)")
+		return
+	}
+
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	emp, err := h.client.Create(r.Context(), userID, req)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -63,7 +76,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, true, "employee created successfully", emp)
 }
 
-// Update applies a partial update to an existing employee.
+// Update applies a partial update to an existing employee for the authenticated user.
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -77,7 +90,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	emp, err := h.client.Update(r.Context(), id, req)
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	emp, err := h.client.Update(r.Context(), userID, id, req)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -86,7 +101,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employee updated successfully", emp)
 }
 
-// Delete removes an employee by ID.
+// Delete removes an employee by ID for the authenticated user.
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -94,7 +109,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.client.Delete(r.Context(), id); err != nil {
+	userID, _ := middleware.UserIDFromContext(r.Context())
+
+	if err := h.client.Delete(r.Context(), userID, id); err != nil {
 		handleError(w, err)
 		return
 	}
@@ -125,7 +142,6 @@ func handleError(w http.ResponseWriter, err error) {
 
 	var be *backendError
 	if errors.As(err, &be) {
-		// Forward status code and message from the upstream CRUD backend.
 		response.Error(w, be.StatusCode, be.Message)
 		return
 	}

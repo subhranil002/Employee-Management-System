@@ -31,9 +31,9 @@ func NewClient(baseURL string) *EmployeeClient {
 	}
 }
 
-// Fetch all employees from backend
-func (c *EmployeeClient) List(ctx context.Context) ([]Employee, error) {
-	resp, err := c.do(ctx, http.MethodGet, "/employees", nil)
+// List fetches all employees for the given user
+func (c *EmployeeClient) List(ctx context.Context, userID string) ([]Employee, error) {
+	resp, err := c.do(ctx, http.MethodGet, "/employees", userID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +48,9 @@ func (c *EmployeeClient) List(ctx context.Context) ([]Employee, error) {
 	return employees, nil
 }
 
-// Fetch single employee by ID from backend
-func (c *EmployeeClient) Get(ctx context.Context, id string) (*Employee, error) {
-	resp, err := c.do(ctx, http.MethodGet, "/employees/"+id, nil)
+// Get fetches a single employee by ID for the given user
+func (c *EmployeeClient) Get(ctx context.Context, userID, id string) (*Employee, error) {
+	resp, err := c.do(ctx, http.MethodGet, "/employees/"+id, userID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +63,9 @@ func (c *EmployeeClient) Get(ctx context.Context, id string) (*Employee, error) 
 	return &emp, nil
 }
 
-// Send create employee request to backend
-func (c *EmployeeClient) Create(ctx context.Context, req CreateEmployeeRequest) (*Employee, error) {
-	resp, err := c.do(ctx, http.MethodPost, "/employees", req)
+// Create creates a new employee for the given user
+func (c *EmployeeClient) Create(ctx context.Context, userID string, req CreateEmployeeRequest) (*Employee, error) {
+	resp, err := c.do(ctx, http.MethodPost, "/employees", userID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +78,9 @@ func (c *EmployeeClient) Create(ctx context.Context, req CreateEmployeeRequest) 
 	return &emp, nil
 }
 
-// Send partial employee update request to backend
-func (c *EmployeeClient) Update(ctx context.Context, id string, req UpdateEmployeeRequest) (*Employee, error) {
-	resp, err := c.do(ctx, http.MethodPatch, "/employees/"+id, req)
+// Update applies a partial update to an employee for the given user
+func (c *EmployeeClient) Update(ctx context.Context, userID, id string, req UpdateEmployeeRequest) (*Employee, error) {
+	resp, err := c.do(ctx, http.MethodPatch, "/employees/"+id, userID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -93,14 +93,14 @@ func (c *EmployeeClient) Update(ctx context.Context, id string, req UpdateEmploy
 	return &emp, nil
 }
 
-// Send delete employee request to backend
-func (c *EmployeeClient) Delete(ctx context.Context, id string) error {
-	_, err := c.do(ctx, http.MethodDelete, "/employees/"+id, nil)
+// Delete removes an employee for the given user
+func (c *EmployeeClient) Delete(ctx context.Context, userID, id string) error {
+	_, err := c.do(ctx, http.MethodDelete, "/employees/"+id, userID, nil)
 	return err
 }
 
-// Execute HTTP request against backend and decode JSON envelope
-func (c *EmployeeClient) do(ctx context.Context, method, path string, body any) (*crudResponse, error) {
+// do executes an HTTP request against the employee API
+func (c *EmployeeClient) do(ctx context.Context, method, path, userID string, body any) (*crudResponse, error) {
 	var reqBody bytes.Buffer
 	if body != nil {
 		if err := json.NewEncoder(&reqBody).Encode(body); err != nil {
@@ -108,7 +108,6 @@ func (c *EmployeeClient) do(ctx context.Context, method, path string, body any) 
 		}
 	}
 
-	// Build and execute HTTP request
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, &reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
@@ -116,6 +115,11 @@ func (c *EmployeeClient) do(ctx context.Context, method, path string, body any) 
 
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+
+	// Set user header for multi-tenancy
+	if userID != "" {
+		req.Header.Set("X-User-Id", userID)
 	}
 
 	res, err := c.httpClient.Do(req)
@@ -127,13 +131,11 @@ func (c *EmployeeClient) do(ctx context.Context, method, path string, body any) 
 	rawBody, _ := io.ReadAll(res.Body)
 	slog.Info("raw backend response", "status", res.StatusCode, "body", string(rawBody))
 
-	// Decode response envelope
 	var envelope crudResponse
 	if err := json.Unmarshal(rawBody, &envelope); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
-	// Only treat non-2xx with no data as an error
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, &backendError{
 			StatusCode: res.StatusCode,

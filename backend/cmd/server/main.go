@@ -10,6 +10,7 @@ import (
 	"github.com/subhranil002/GO-Cognito/internal/employee"
 	"github.com/subhranil002/GO-Cognito/internal/middleware"
 	"github.com/subhranil002/GO-Cognito/internal/router"
+	"github.com/subhranil002/GO-Cognito/internal/user"
 	"github.com/subhranil002/GO-Cognito/pkg/logger"
 )
 
@@ -25,16 +26,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize verifier and employee handlers
-	tokenVerifier := middleware.NewTokenVerifier(
+	// Initialize user client and handler
+	userClient := user.NewClient(cfg.EMSAPIURL)
+	userHandler := user.NewHandler()
+
+	// Initialize verifier (verifies access token, ID token, and resolves user)
+	verifier := middleware.NewVerifier(
 		cfg.CognitoIssuer(),
 		cfg.CognitoClientID,
+		userClient,
 	)
-	employeeClient := employee.NewClient(cfg.EmployeeAPIURL)
+
+	// Initialize employee client and handler
+	employeeClient := employee.NewClient(cfg.EMSAPIURL)
 	employeeHandler := employee.NewHandler(employeeClient)
 
 	// Setup routes and middleware
-	mux := router.Setup(tokenVerifier, employeeHandler)
+	mux := router.Setup(verifier, employeeHandler, userHandler)
 	var handler http.Handler = mux
 	handler = middleware.CORS(cfg.AllowedOrigin)(handler)
 	handler = middleware.Logger(log)(handler)

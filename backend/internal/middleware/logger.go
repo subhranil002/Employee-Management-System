@@ -29,6 +29,7 @@ func (w *statusWriter) Write(
 	return w.ResponseWriter.Write(data)
 }
 
+// Logger logs HTTP request method, path, status, and duration
 func Logger(
 	logger *slog.Logger,
 ) func(http.Handler) http.Handler {
@@ -45,7 +46,6 @@ func Logger(
 					ResponseWriter: w,
 				}
 
-				// Execute subsequent middleware and handler
 				next.ServeHTTP(sw, r)
 
 				status := sw.status
@@ -54,7 +54,6 @@ func Logger(
 					status = http.StatusOK
 				}
 
-				// Log incoming HTTP request method, path, status, and latency
 				logger.Info(
 					"http request",
 					"method", r.Method,
