@@ -1,13 +1,11 @@
-export type User = {
-  user_sub: string;
-  username: string;
-  name?: string;
-  email?: string;
+export type UserProfile = {
+  _id: string;
+  name: string;
+  email: string;
 };
 
 export type AuthState = {
-  user: User | null;
+  user: UserProfile | null;
   loading: boolean;
   error: string | null;
 };
-

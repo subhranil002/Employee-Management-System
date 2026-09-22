@@ -41,7 +41,9 @@ export async function updateEmployee(
   id: string,
   data: EmployeeFormData,
 ): Promise<Employee> {
-  const res = apiClient.patch<ApiResponse<Employee>>(`/employees/${id}`, data);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { empID, ...updateData } = data;
+  const res = apiClient.patch<ApiResponse<Employee>>(`/employees/${id}`, updateData);
   toast.promise(res, {
     loading: "Updating employee...",
     success: (r) => r.data.message,

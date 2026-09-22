@@ -18,6 +18,7 @@ export default function EmployeeTable({
       <table className="w-full text-sm text-left">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 uppercase text-xs tracking-wide">
+            <th className="px-5 py-3 font-semibold">Emp ID</th>
             <th className="px-5 py-3 font-semibold">Name</th>
             <th className="px-5 py-3 font-semibold">Email</th>
             <th className="px-5 py-3 font-semibold">Department</th>
@@ -31,6 +32,9 @@ export default function EmployeeTable({
               key={emp._id}
               className="hover:bg-gray-50/80 transition-colors"
             >
+              <td className="px-5 py-3.5 font-mono text-xs text-gray-500">
+                {emp.empID}
+              </td>
               <td className="px-5 py-3.5 font-medium text-gray-900">
                 {emp.name}
               </td>

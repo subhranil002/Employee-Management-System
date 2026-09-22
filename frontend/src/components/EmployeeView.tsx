@@ -7,11 +7,12 @@ type Props = {
 
 export default function EmployeeView({ employee, onClose }: Props) {
   const fields: [string, string][] = [
+    ["Employee ID", employee.empID],
     ["Name", employee.name],
     ["Email", employee.email],
     ["Department", employee.department || "—"],
     ["Salary", `$${employee.salary.toLocaleString()}`],
-    ["ID", employee._id],
+    ["DB ID", employee._id],
   ];
 
   return (
@@ -51,7 +52,7 @@ export default function EmployeeView({ employee, onClose }: Props) {
               <dt className="text-sm font-medium text-gray-500">{label}</dt>
               <dd
                 className={`text-sm text-right ${
-                  label === "ID"
+                  label === "DB ID" || label === "Employee ID"
                     ? "font-mono text-xs text-gray-400"
                     : "text-gray-900"
                 }`}

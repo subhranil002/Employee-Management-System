@@ -2,6 +2,7 @@ interface NavbarProps {
   totalEmployees: number;
   userName?: string;
   userEmail?: string;
+  profileLoading: boolean;
   showCount: boolean;
   onAddClick: () => void;
   onLogoutClick: () => void;
@@ -12,6 +13,7 @@ export default function Navbar({
   totalEmployees,
   userName,
   userEmail,
+  profileLoading,
   showCount,
   onAddClick,
   onLogoutClick,
@@ -28,9 +30,18 @@ export default function Navbar({
           )}
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-900">{userName || "User"}</p>
-            <p className="text-xs text-gray-500">{userEmail}</p>
+          <div className="text-right hidden sm:block min-w-[100px]">
+            {profileLoading ? (
+              <div className="flex flex-col items-end gap-1">
+                <div className="h-3.5 w-24 bg-gray-200 rounded animate-pulse" />
+                <div className="h-3 w-32 bg-gray-100 rounded animate-pulse" />
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-gray-900">{userName || "—"}</p>
+                <p className="text-xs text-gray-500">{userEmail || ""}</p>
+              </>
+            )}
           </div>
           <button
             onClick={onAddClick}
@@ -62,4 +73,3 @@ export default function Navbar({
     </header>
   );
 }
-

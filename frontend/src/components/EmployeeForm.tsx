@@ -10,6 +10,7 @@ type Props = {
 };
 
 const emptyForm: EmployeeFormData = {
+  empID: "",
   name: "",
   email: "",
   department: "",
@@ -28,6 +29,11 @@ export default function EmployeeForm({
 
   function validate(): boolean {
     const e: Record<string, string> = {};
+    if (!form.empID.trim()) {
+      e.empID = "Employee ID is required";
+    } else if (!/^EMP-\d{3}$/.test(form.empID.trim())) {
+      e.empID = "Employee ID must be in format EMP-123";
+    }
     if (!form.name.trim()) e.name = "Name is required";
     if (!form.email.trim()) e.email = "Email is required";
     if (form.salary < 0) e.salary = "Salary must be >= 0";
@@ -78,6 +84,21 @@ export default function EmployeeForm({
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Employee ID <span className="text-red-500">*</span>
+            </label>
+            <input
+              className={`${inputClass("empID")} ${initialData ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}`}
+              placeholder="EMP-123"
+              value={form.empID}
+              onChange={(e) => update("empID", e.target.value)}
+              disabled={!!initialData}
+            />
+            {errors.empID && (
+              <p className="text-red-500 text-xs mt-1.5">{errors.empID}</p>
+            )}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Name <span className="text-red-500">*</span>

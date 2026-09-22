@@ -10,6 +10,7 @@ import AuthGuard from "./components/AuthGuard";
 import Navbar from "./components/Navbar";
 import { useAuthInterceptor } from "./hooks/useAuthInterceptor";
 import { useEmployees } from "./hooks/useEmployees";
+import { useProfile } from "./hooks/useProfile";
 
 type Modal =
   | { type: "add" }
@@ -21,6 +22,8 @@ type Modal =
 function AppContent() {
   const auth = useAuth();
   useAuthInterceptor(auth);
+
+  const { profile, loading: profileLoading } = useProfile(auth.isAuthenticated);
 
   const {
     employees,
@@ -58,7 +61,7 @@ function AppContent() {
     try {
       await auth.removeUser();
       const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID;
-      const logoutUri = import.meta.env.VITE_COGNITO_REDIRECT_URI || window.location.origin;
+      const logoutUri = import.meta.env.VITE_COGNITO_REDIRECT_URI;
       const cognitoDomain = import.meta.env.VITE_COGNITO_DOMAIN;
       window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
     } catch {
@@ -70,8 +73,9 @@ function AppContent() {
     <div className="min-h-screen">
       <Navbar
         totalEmployees={employees.length}
-        userName={auth.user?.profile.name || auth.user?.profile.email}
-        userEmail={auth.user?.profile.email}
+        userName={profile?.name}
+        userEmail={profile?.email}
+        profileLoading={profileLoading}
         showCount={!loading && !error}
         onAddClick={() => setModal({ type: "add" })}
         onLogoutClick={handleLogout}
@@ -249,6 +253,7 @@ function AppContent() {
         <EmployeeForm
           title="Edit Employee"
           initialData={{
+            empID: modal.employee.empID,
             name: modal.employee.name,
             email: modal.employee.email,
             department: modal.employee.department,

@@ -2,12 +2,15 @@ import { useEffect } from "react";
 import type { AuthContextProps } from "react-oidc-context";
 import { apiClient } from "../api/employees";
 
-// Custom hook to set up Axios auth headers and handle 401 token refresh/logout
+// Attaches Authorization + X-Id-Token headers and handles 401 silent refresh
 export function useAuthInterceptor(auth: AuthContextProps) {
   useEffect(() => {
     const reqInterceptor = apiClient.interceptors.request.use((config) => {
       if (auth.user?.access_token) {
         config.headers.Authorization = `Bearer ${auth.user.access_token}`;
+      }
+      if (auth.user?.id_token) {
+        config.headers["X-Id-Token"] = auth.user.id_token;
       }
       return config;
     });
@@ -19,8 +22,11 @@ export function useAuthInterceptor(auth: AuthContextProps) {
           if (err.response?.data?.message === "token_expired") {
             try {
               const user = await auth.signinSilent();
-              if (user && user.access_token) {
+              if (user?.access_token) {
                 err.config.headers.Authorization = `Bearer ${user.access_token}`;
+                if (user.id_token) {
+                  err.config.headers["X-Id-Token"] = user.id_token;
+                }
                 return apiClient.request(err.config);
               }
             } catch {
@@ -38,6 +44,5 @@ export function useAuthInterceptor(auth: AuthContextProps) {
       apiClient.interceptors.request.eject(reqInterceptor);
       apiClient.interceptors.response.eject(resInterceptor);
     };
-  }, [auth.user?.access_token, auth]);
+  }, [auth.user?.access_token, auth.user?.id_token, auth]);
 }
-
