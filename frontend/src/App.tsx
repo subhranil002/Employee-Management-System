@@ -57,6 +57,7 @@ function AppContent() {
     if (ok) setModal(null);
   };
 
+  // Sign out user and redirect through Cognito logout endpoint
   const handleLogout = async () => {
     try {
       await auth.removeUser();
@@ -82,7 +83,7 @@ function AppContent() {
       />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {/* Search */}
+        {/* Search filter input */}
         <div className="relative mb-5">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
@@ -127,7 +128,7 @@ function AppContent() {
           )}
         </div>
 
-        {/* Content */}
+        {/* Employee directory view */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="w-8 h-8 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-3" />
@@ -239,7 +240,7 @@ function AppContent() {
         )}
       </main>
 
-      {/* Modals */}
+      {/* Modal dialogs */}
       {modal?.type === "add" && (
         <EmployeeForm
           title="Add Employee"

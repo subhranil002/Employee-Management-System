@@ -6,10 +6,11 @@ interface AuthGuardProps {
   children: ReactNode;
 }
 
-// Wrapper component to handle authentication loading and login screens
+// Ensure user is authenticated before rendering children
 export default function AuthGuard({ children }: AuthGuardProps) {
   const auth = useAuth();
 
+  // Show loading indicator while authentication state initializes
   if (auth.isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -19,6 +20,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
+  // Display sign-in prompt when unauthenticated
   if (!auth.isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -41,4 +43,3 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   return <>{children}</>;
 }
-

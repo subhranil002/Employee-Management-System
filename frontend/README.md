@@ -1,53 +1,41 @@
-# Frontend UI
+# Frontend UI (React + Vite + TypeScript)
 
-This is the React frontend for the Employee Management System, built with Vite and TypeScript. It interacts with the backend Go API for authentication and the Lambda functions for employee operations.
+Single-page application for the Employee Management System, built with React, Vite, Tailwind CSS, and `react-oidc-context`.
+
+## Features
+
+- **AWS Cognito Authentication**: Authorization Code flow with PKCE via `react-oidc-context`.
+- **Silent Token Refresh**: Axios interceptors automatically renew expired tokens using Cognito silent sign-in.
+- **Tenant Isolation**: Only displays and manages employees created by the authenticated user.
+- **Employee Management**: Filterable table with full CRUD (Add, Edit, View, Delete) modals and toast alerts.
 
 ## Prerequisites
 
 - Node.js (v18+)
-- npm or yarn or pnpm
+- npm or yarn
 
-## Setup
+## Environment Variables
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
+Create `.env` in the `frontend` root:
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```env
+VITE_API_BASE_URL=http://localhost:3000
+VITE_COGNITO_AUTHORITY=https://cognito-idp.<region>.amazonaws.com/<user-pool-id>
+VITE_COGNITO_CLIENT_ID=<cognito-client-id>
+VITE_COGNITO_REDIRECT_URI=http://localhost:5173
+VITE_COGNITO_DOMAIN=https://<your-auth-domain>.auth.<region>.amazoncognito.com
+VITE_COGNITO_SCOPE=openid email phone
+```
 
-3. Create a `.env` file in the root of the frontend directory:
-   ```env
-   VITE_API_BASE_URL=http://localhost:8080
-   ```
-
-## Development
-
-To start the development server with Hot Module Replacement (HMR):
+## Getting Started
 
 ```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
-```
 
-The app will typically be available at `http://localhost:5173`.
-
-## Building for Production
-
-To create a production-ready build:
-
-```bash
+# Build for production
 npm run build
-```
-
-The compiled static assets will be output to the `dist/` directory, which can be deployed to static hosting providers like Vercel, Netlify, or AWS S3.
-
-## Linting
-
-To run ESLint and check for code quality issues:
-
-```bash
-npm run lint
 ```

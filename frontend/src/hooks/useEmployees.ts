@@ -30,7 +30,7 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   }
 }
 
-// Custom hook to manage employee state, fetching, searching, and CRUD operations
+// Manage employee listing, search filter, and CRUD state
 export function useEmployees(isAuthenticated: boolean) {
   const [state, dispatch] = useReducer(fetchReducer, {
     employees: [],
@@ -42,6 +42,7 @@ export function useEmployees(isAuthenticated: boolean) {
   const [deleting, setDeleting] = useState(false);
   const [fetchKey, refetch] = useReducer((c: number) => c + 1, 0);
 
+  // Fetch employee list when authenticated or refreshed
   useEffect(() => {
     let ignore = false;
     if (!isAuthenticated) return;
@@ -64,6 +65,7 @@ export function useEmployees(isAuthenticated: boolean) {
     };
   }, [fetchKey, isAuthenticated]);
 
+  // Compute search-filtered employee records
   const filtered = useMemo(() => {
     if (!search.trim()) return state.employees;
     const q = search.toLowerCase();
@@ -129,4 +131,3 @@ export function useEmployees(isAuthenticated: boolean) {
     handleDelete,
   };
 }
-

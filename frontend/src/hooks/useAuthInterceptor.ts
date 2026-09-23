@@ -2,19 +2,18 @@ import { useEffect } from "react";
 import type { AuthContextProps } from "react-oidc-context";
 import { apiClient } from "../api/employees";
 
-// Attaches Authorization + X-Id-Token headers and handles 401 silent refresh
+// Attach bearer token and trigger silent token refresh on 401
 export function useAuthInterceptor(auth: AuthContextProps) {
   useEffect(() => {
+    // Inject access token into outbound requests
     const reqInterceptor = apiClient.interceptors.request.use((config) => {
       if (auth.user?.access_token) {
         config.headers.Authorization = `Bearer ${auth.user.access_token}`;
       }
-      if (auth.user?.id_token) {
-        config.headers["X-Id-Token"] = auth.user.id_token;
-      }
       return config;
     });
 
+    // Handle token expiry by requesting a silent session renewal
     const resInterceptor = apiClient.interceptors.response.use(
       (res) => res,
       async (err) => {
@@ -24,9 +23,6 @@ export function useAuthInterceptor(auth: AuthContextProps) {
               const user = await auth.signinSilent();
               if (user?.access_token) {
                 err.config.headers.Authorization = `Bearer ${user.access_token}`;
-                if (user.id_token) {
-                  err.config.headers["X-Id-Token"] = user.id_token;
-                }
                 return apiClient.request(err.config);
               }
             } catch {
@@ -44,5 +40,5 @@ export function useAuthInterceptor(auth: AuthContextProps) {
       apiClient.interceptors.request.eject(reqInterceptor);
       apiClient.interceptors.response.eject(resInterceptor);
     };
-  }, [auth.user?.access_token, auth.user?.id_token, auth]);
+  }, [auth.user?.access_token, auth]);
 }

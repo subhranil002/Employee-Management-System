@@ -8,7 +8,7 @@ type ProfileState = {
   error: string;
 };
 
-// Fetches the authenticated user profile from the backend /profile endpoint
+// Fetch authenticated user profile from backend
 export function useProfile(isAuthenticated: boolean) {
   const [state, setState] = useState<ProfileState>({
     profile: null,
@@ -43,4 +43,3 @@ export function useProfile(isAuthenticated: boolean) {
 
   return state;
 }
-

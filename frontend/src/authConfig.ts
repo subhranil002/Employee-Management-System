@@ -10,7 +10,7 @@ export const cognitoAuthConfig: AuthProviderProps = {
   automaticSilentRenew: true,
   userStore: new WebStorageStateStore({ store: window.localStorage }),
   onSigninCallback: () => {
-    // Remove the ?code=...&state=... from the URL after successful login
+    // Remove OAuth authorization code parameters from address bar
     window.history.replaceState({}, document.title, window.location.pathname);
   },
 };
