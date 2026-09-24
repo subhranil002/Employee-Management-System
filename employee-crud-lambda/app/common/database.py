@@ -2,7 +2,6 @@ from pymongo import MongoClient
 
 from .config import MONGODB_URI, MONGODB_DATABASE
 
-
 _client = None
 _database = None
 
@@ -11,6 +10,7 @@ def get_database():
     global _client
     global _database
 
+    # Return cached database instance if already connected
     if _database is not None:
         return _database
 
@@ -22,9 +22,8 @@ def get_database():
         retryWrites=True,
     )
 
-    # Force a connection check.
+    # Verify MongoDB connection health
     _client.admin.command("ping")
 
     _database = _client[MONGODB_DATABASE]
-
     return _database

@@ -1,55 +1,21 @@
-import json
-
-from common.response import error, success
-from common.service import (
-    UserService,
-    InvalidUserError,
-)
-
+from common.service import InvalidUserError, UserService
 
 service = UserService()
 
 
 def handler(event, context):
-
     try:
-        body = event.get("body")
+        # Synchronize confirmed Cognito user attributes into MongoDB
+        user = service.create_from_cognito(event)
+        print(f"Cognito user synchronized to MongoDB: {user.get('cognitoSub')}")
 
-        if not body:
-            return error(
-                400,
-                "request body is required",
-            )
-
-        if isinstance(body, str):
-            body = json.loads(body)
-
-        user = service.create(body)
-
-        return success(
-            201,
-            "User created successfully",
-            user,
-        )
-
-    except json.JSONDecodeError:
-        return error(
-            400,
-            "invalid JSON",
-        )
+        # Return event payload unchanged as required by Cognito trigger
+        return event
 
     except InvalidUserError as exc:
-        return error(
-            400,
-            str(exc),
-        )
+        print(f"Invalid Cognito user event: {exc}")
+        raise
 
     except Exception as exc:
-        print(
-            f"Create user error: {exc}"
-        )
-
-        return error(
-            500,
-            "internal server error",
-        )
+        print(f"Cognito user persistence error: {exc}")
+        raise

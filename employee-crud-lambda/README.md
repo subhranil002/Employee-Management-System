@@ -1,62 +1,60 @@
-# Employee CRUD Serverless API
+# Serverless CRUD & User Functions (AWS Lambda)
 
-This component contains Python-based AWS Lambda functions responsible for the core Create, Read, Update, and Delete (CRUD) operations on employee data. It persists data to a MongoDB database.
+Python AWS Lambda functions managing user synchronization and employee CRUD operations persisted in MongoDB.
+
+## Functions
+
+- **`create_user` (Cognito Post Confirmation Trigger)**:
+  - Invoked automatically when a user confirms signup in AWS Cognito.
+  - Upserts `cognitoSub`, `email`, and `name` into the `users` collection in MongoDB.
+  - Handler: `create_user.handler.handler`.
+- **`read_user`**:
+  - Handles `GET /users?email=...` or `GET /users` to look up users by email.
+  - Handler: `read_user.handler.handler`.
+- **`create_employee`**:
+  - Handles `POST /employees` scoped to the caller's `X-User-Id`.
+  - Handler: `create_employee.handler.handler`.
+- **`read_employee`**:
+  - Handles `GET /employees` and `GET /employees/{id}` scoped to `X-User-Id`.
+  - Handler: `read_employee.handler.handler`.
+- **`update_employee`**:
+  - Handles `PATCH /employees/{id}` scoped to `X-User-Id`.
+  - Handler: `update_employee.handler.handler`.
+- **`delete_employee`**:
+  - Handles `DELETE /employees/{id}` scoped to `X-User-Id`.
+  - Handler: `delete_employee.handler.handler`.
 
 ## Prerequisites
 
 - Python 3.12+
-- MongoDB instance (local or Atlas)
+- MongoDB instance (Atlas or local)
 
-## Setup
+## Environment Variables
 
-1. Navigate to the Lambda directory:
-   ```bash
-   cd employee-crud-lambda
-   ```
+Configured in Lambda or via AWS Secrets Manager:
 
-2. Create a virtual environment and install dependencies:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
-   pip install -r requirements.txt
-   ```
-
-3. Configure your environment variables. Create a `.env` file in this directory (or use AWS Secrets Manager in production):
-
-   ```env
-   MONGODB_URI=mongodb://localhost:27017/
-   MONGODB_DATABASE=employee_db
-   MONGODB_COLLECTION=employees
-   ```
-   *Note: If deployed to AWS, you can use `MONGODB_SECRET_ARN` to pull database credentials securely from AWS Secrets Manager.*
+```env
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net
+MONGODB_DATABASE=employee_db
+MONGODB_EMPLOYEE_COLLECTION=employees
+MONGODB_USER_COLLECTION=users
+# Optional: MONGODB_SECRET_ARN=arn:aws:secretsmanager:...
+```
 
 ## Local Testing
 
-You can use the provided local testing script to verify the functions:
-
 ```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 python app/test_local.py
 ```
 
-## Structure
+## Packaging
 
-- `app/common/`: Shared configuration, database connection, and repository patterns.
-- `app/create_employee/`: Lambda handler for POST requests.
-- `app/read_employee/`: Lambda handler for GET requests.
-- `app/update_employee/`: Lambda handler for PUT/PATCH requests.
-- `app/delete_employee/`: Lambda handler for DELETE requests.
-
-## Deployment
-
-The functions can be packaged as ZIP files. To generate a deployment package manually:
+Package functions along with `common/` module into zip files:
 
 ```bash
-pip install --target ./package -r requirements.txt
-cd package
-zip -r ../employee-crud.zip .
-cd ../app
-zip -g -r ../employee-crud.zip .
+cd app
+zip -r ../build/functions/create_user-v2.zip create_user/ common/
 ```
-
-The resulting `employee-crud.zip` can be uploaded to AWS Lambda via the AWS CLI or Console.
-

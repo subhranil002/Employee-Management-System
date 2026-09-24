@@ -11,14 +11,10 @@ load_dotenv()
 def get_mongodb_config():
     secret_arn = os.getenv("MONGODB_SECRET_ARN")
 
-    # AWS: load credentials from Secrets Manager
+    # Fetch connection credentials from AWS Secrets Manager
     if secret_arn:
         secrets_client = boto3.client("secretsmanager")
-
-        result = secrets_client.get_secret_value(
-            SecretId=secret_arn
-        )
-
+        result = secrets_client.get_secret_value(SecretId=secret_arn)
         secret = json.loads(result["SecretString"])
 
         username = quote_plus(secret["username"])
@@ -39,48 +35,30 @@ def get_mongodb_config():
             "database": database,
             "employee_collection": secret.get(
                 "employee_collection",
-                os.getenv(
-                    "MONGODB_EMPLOYEE_COLLECTION",
-                    "employees",
-                ),
+                os.getenv("MONGODB_EMPLOYEE_COLLECTION", "employees"),
             ),
             "user_collection": secret.get(
                 "user_collection",
-                os.getenv(
-                    "MONGODB_USER_COLLECTION",
-                    "users",
-                ),
+                os.getenv("MONGODB_USER_COLLECTION", "users"),
             ),
         }
 
-    # Local: load from .env
+    # Fallback to local environment variables
     mongodb_uri = os.getenv("MONGODB_URI")
-
     if not mongodb_uri:
         raise RuntimeError(
-            "MONGODB_URI environment variable is missing "
-            "and MONGODB_SECRET_ARN is not configured"
+            "MONGODB_URI environment variable is missing and MONGODB_SECRET_ARN is not configured"
         )
 
     return {
         "uri": mongodb_uri,
-        "database": os.getenv(
-            "MONGODB_DATABASE",
-            "employee_db",
-        ),
-        "employee_collection": os.getenv(
-            "MONGODB_EMPLOYEE_COLLECTION",
-            "employees",
-        ),
-        "user_collection": os.getenv(
-            "MONGODB_USER_COLLECTION",
-            "users",
-        ),
+        "database": os.getenv("MONGODB_DATABASE", "employee_db"),
+        "employee_collection": os.getenv("MONGODB_EMPLOYEE_COLLECTION", "employees"),
+        "user_collection": os.getenv("MONGODB_USER_COLLECTION", "users"),
     }
 
 
 mongodb_config = get_mongodb_config()
-
 MONGODB_URI = mongodb_config["uri"]
 MONGODB_DATABASE = mongodb_config["database"]
 employee_collection = mongodb_config["employee_collection"]
