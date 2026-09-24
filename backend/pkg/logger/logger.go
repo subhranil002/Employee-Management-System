@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// New initializes a JSON slog logger
+// New initializes a JSON structured logger
 func New() *slog.Logger {
 	handler := slog.NewJSONHandler(
 		os.Stdout,

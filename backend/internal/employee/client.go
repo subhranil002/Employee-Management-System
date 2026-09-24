@@ -31,14 +31,12 @@ func NewClient(baseURL string) *EmployeeClient {
 	}
 }
 
-// List fetches all employees for the given user
+// List retrieves all employees belonging to the specified user
 func (c *EmployeeClient) List(ctx context.Context, userID string) ([]Employee, error) {
 	resp, err := c.do(ctx, http.MethodGet, "/employees", userID, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	slog.Info("employee client list response", "resp", resp)
 
 	var employees []Employee
 	if err := json.Unmarshal(resp.Data, &employees); err != nil {
@@ -48,7 +46,7 @@ func (c *EmployeeClient) List(ctx context.Context, userID string) ([]Employee, e
 	return employees, nil
 }
 
-// Get fetches a single employee by ID for the given user
+// Get fetches a single employee record by ID scoped to the user
 func (c *EmployeeClient) Get(ctx context.Context, userID, id string) (*Employee, error) {
 	resp, err := c.do(ctx, http.MethodGet, "/employees/"+id, userID, nil)
 	if err != nil {
@@ -63,7 +61,7 @@ func (c *EmployeeClient) Get(ctx context.Context, userID, id string) (*Employee,
 	return &emp, nil
 }
 
-// Create creates a new employee for the given user
+// Create inserts a new employee record under the user
 func (c *EmployeeClient) Create(ctx context.Context, userID string, req CreateEmployeeRequest) (*Employee, error) {
 	resp, err := c.do(ctx, http.MethodPost, "/employees", userID, req)
 	if err != nil {
@@ -78,7 +76,7 @@ func (c *EmployeeClient) Create(ctx context.Context, userID string, req CreateEm
 	return &emp, nil
 }
 
-// Update applies a partial update to an employee for the given user
+// Update modifies an existing employee record belonging to the user
 func (c *EmployeeClient) Update(ctx context.Context, userID, id string, req UpdateEmployeeRequest) (*Employee, error) {
 	resp, err := c.do(ctx, http.MethodPatch, "/employees/"+id, userID, req)
 	if err != nil {
@@ -93,13 +91,13 @@ func (c *EmployeeClient) Update(ctx context.Context, userID, id string, req Upda
 	return &emp, nil
 }
 
-// Delete removes an employee for the given user
+// Delete removes an employee record belonging to the user
 func (c *EmployeeClient) Delete(ctx context.Context, userID, id string) error {
 	_, err := c.do(ctx, http.MethodDelete, "/employees/"+id, userID, nil)
 	return err
 }
 
-// do executes an HTTP request against the employee API
+// Executes an HTTP request against the employee Lambda endpoint
 func (c *EmployeeClient) do(ctx context.Context, method, path, userID string, body any) (*crudResponse, error) {
 	var reqBody bytes.Buffer
 	if body != nil {
@@ -117,7 +115,7 @@ func (c *EmployeeClient) do(ctx context.Context, method, path, userID string, bo
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	// Set user header for multi-tenancy
+	// Propagate tenant user ID header to downstream Lambda
 	if userID != "" {
 		req.Header.Set("X-User-Id", userID)
 	}
@@ -136,6 +134,7 @@ func (c *EmployeeClient) do(ctx context.Context, method, path, userID string, bo
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
+	// Return error for non-2xx status responses
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, &backendError{
 			StatusCode: res.StatusCode,

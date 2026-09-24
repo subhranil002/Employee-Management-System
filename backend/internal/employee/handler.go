@@ -20,7 +20,7 @@ func NewHandler(client *EmployeeClient) *Handler {
 	return &Handler{client: client}
 }
 
-// List fetches all employees for the authenticated user.
+// List handles retrieving all employees for the authenticated user
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, _ := middleware.UserIDFromContext(r.Context())
 
@@ -33,7 +33,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employees retrieved successfully", employees)
 }
 
-// Get fetches a single employee by ID for the authenticated user.
+// Get handles retrieving a single employee by ID
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -52,7 +52,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employee retrieved successfully", emp)
 }
 
-// Create creates a new employee for the authenticated user.
+// Create validates employee payload and creates a new employee
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateEmployeeRequest
 
@@ -60,6 +60,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate employee identifier format
 	if matched, _ := regexp.MatchString(`^EMP-\d{3}$`, req.EmpID); !matched {
 		response.Error(w, http.StatusBadRequest, "empID must be in the format EMP-123 (EMP- followed by exactly 3 digits)")
 		return
@@ -76,7 +77,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, true, "employee created successfully", emp)
 }
 
-// Update applies a partial update to an existing employee for the authenticated user.
+// Update validates payload and updates specified employee fields
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -101,7 +102,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employee updated successfully", emp)
 }
 
-// Delete removes an employee by ID for the authenticated user.
+// Delete removes an employee record by ID
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -119,7 +120,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, true, "employee deleted successfully", nil)
 }
 
-// readJSON parses and validates the JSON request body.
+// Decode and validate JSON request body
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	defer r.Body.Close()
@@ -136,7 +137,7 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	return nil
 }
 
-// handleError maps backend errors to appropriate HTTP responses.
+// Map downstream service errors to HTTP response codes
 func handleError(w http.ResponseWriter, err error) {
 	slog.Error("employee request failed", "error", err)
 

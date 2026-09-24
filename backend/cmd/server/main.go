@@ -15,39 +15,37 @@ import (
 )
 
 func main() {
-	// Initialize logger
+	// Initialize structured logger
 	log := logger.New()
 	slog.SetDefault(log)
 
-	// Load configuration
+	// Load environment or Secrets Manager configuration
 	cfg, err := appconfig.Load()
 	if err != nil {
 		log.Error("configuration error", "error", err)
 		os.Exit(1)
 	}
 
-	// Initialize user client and handler
 	userClient := user.NewClient(cfg.EMSAPIURL)
 	userHandler := user.NewHandler()
 
-	// Initialize verifier (verifies access token, ID token, and resolves user)
+	// Initialize JWT verifier using Cognito JWKS
 	verifier := middleware.NewVerifier(
 		cfg.CognitoIssuer(),
 		cfg.CognitoClientID,
 		userClient,
 	)
 
-	// Initialize employee client and handler
 	employeeClient := employee.NewClient(cfg.EMSAPIURL)
 	employeeHandler := employee.NewHandler(employeeClient)
 
-	// Setup routes and middleware
+	// Register routes and global middleware
 	mux := router.Setup(verifier, employeeHandler, userHandler)
 	var handler http.Handler = mux
 	handler = middleware.CORS(cfg.AllowedOrigin)(handler)
 	handler = middleware.Logger(log)(handler)
 
-	// Start HTTP server
+	// Configure HTTP server timeouts
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           handler,
@@ -57,6 +55,7 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	// Start HTTP server listener
 	log.Info("server started", "addr", cfg.HTTPAddr, "environment", cfg.AppEnv)
 	if err = server.ListenAndServe(); err != nil {
 		log.Error("server stopped unexpectedly", "error", err)

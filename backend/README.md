@@ -1,54 +1,47 @@
-# Backend API (Auth & Gateway)
+# Backend API (Go Gateway & Verifier)
 
-This is the Go-based backend for the Employee Management System. It primarily handles user authentication using AWS Cognito and acts as an entry point/middleware layer.
+The Go backend serves as the secure API gateway for the Employee Management System. It validates Cognito JWT tokens, resolves authenticated user identities, and proxies tenant-scoped employee CRUD requests to the serverless Lambda microservices.
+
+## Features
+
+- **JWT Authentication**: Validates AWS Cognito access tokens via RS256 JWKS key sets.
+- **Tenant Context Resolution**: Maps token claims (`username`/email) to MongoDB user IDs and passes them in downstream requests (`X-User-Id`).
+- **REST Endpoints**:
+  - `GET /healthz`: Public service health check.
+  - `GET /profile`: Returns authenticated user profile.
+  - `GET /employees`: Lists employees for the tenant.
+  - `POST /employees`: Creates an employee under the tenant.
+  - `GET /employees/{id}`: Retrieves single employee.
+  - `PATCH /employees/{id}`: Partially updates employee.
+  - `DELETE /employees/{id}`: Deletes employee.
+- **Middleware**: Structured JSON request logging, CORS, and token verification.
 
 ## Prerequisites
 
-- Go (1.20+)
-- AWS Cognito User Pool and Client configured
+- Go (1.22+)
+- AWS Cognito User Pool & App Client
 
-## Setup
+## Configuration
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+Set configuration via environment variables or AWS Secrets Manager:
 
-2. Install dependencies:
-   ```bash
-   go mod download
-   ```
-
-3. Create your environment configuration:
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Configure the `.env` file with your details:
-   ```env
-   APP_ENV=development
-   HTTP_ADDR=:8080
-   AWS_REGION=ap-south-1
-   COGNITO_USER_POOL_ID=your-user-pool-id
-   COGNITO_CLIENT_ID=your-client-id
-   COGNITO_CLIENT_SECRET=your-client-secret
-   ```
-
-## Running the Server
-
-To start the server in development mode:
-
-```bash
-go run cmd/server/main.go
+```env
+APP_ENV=development
+HTTP_ADDR=:3000
+AWS_REGION=ap-south-1
+COGNITO_USER_POOL_ID=ap-south-1_xxxxxxxxx
+COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
+EMS_API_URL=https://<api-gateway-id>.execute-api.ap-south-1.amazonaws.com
+ALLOWED_ORIGIN=http://localhost:5173
+# Optional: BACKEND_SECRET_ARN=arn:aws:secretsmanager:...
 ```
 
-The server will start on port `8080` (or whatever `HTTP_ADDR` is set to).
+## Running Locally
 
-## Architecture overview
+```bash
+# Download dependencies
+go mod download
 
-- `cmd/server/main.go`: Application entry point.
-- `internal/auth/`: Contains handlers, models, and services for authentication.
-- `internal/employee/`: HTTP client logic mapping to the Python AWS Lambda endpoints.
-- `internal/middleware/`: CORS, authentication, token refresh, and logging middlewares.
-- `pkg/`: Reusable packages for generic responses and cookie management.
-
+# Run server
+go run cmd/server/main.go
+```

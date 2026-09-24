@@ -11,57 +11,41 @@ type statusWriter struct {
 	status int
 }
 
-func (w *statusWriter) WriteHeader(
-	statusCode int,
-) {
+func (w *statusWriter) WriteHeader(statusCode int) {
 	w.status = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
-func (w *statusWriter) Write(
-	data []byte,
-) (int, error) {
-
+func (w *statusWriter) Write(data []byte) (int, error) {
 	if w.status == 0 {
 		w.status = http.StatusOK
 	}
-
 	return w.ResponseWriter.Write(data)
 }
 
-// Logger logs HTTP request method, path, status, and duration
-func Logger(
-	logger *slog.Logger,
-) func(http.Handler) http.Handler {
-
+// Logger records incoming HTTP requests, duration, and status codes
+func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 
-		return http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
+			// Capture status code using wrapped response writer
+			sw := &statusWriter{ResponseWriter: w}
+			next.ServeHTTP(sw, r)
 
-				start := time.Now()
+			status := sw.status
+			if status == 0 {
+				status = http.StatusOK
+			}
 
-				// Wrap ResponseWriter to capture HTTP status code
-				sw := &statusWriter{
-					ResponseWriter: w,
-				}
-
-				next.ServeHTTP(sw, r)
-
-				status := sw.status
-
-				if status == 0 {
-					status = http.StatusOK
-				}
-
-				logger.Info(
-					"http request",
-					"method", r.Method,
-					"path", r.URL.Path,
-					"status", status,
-					"duration", time.Since(start),
-				)
-			},
-		)
+			// Emit structured log for completed request
+			logger.Info(
+				"http request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", status,
+				"duration", time.Since(start),
+			)
+		})
 	}
 }

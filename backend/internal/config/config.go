@@ -12,7 +12,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds runtime configuration
 type Config struct {
 	AppEnv            string
 	HTTPAddr          string
@@ -23,7 +22,7 @@ type Config struct {
 	AllowedOrigin     string
 }
 
-// Load reads config from Secrets Manager or environment variables
+// Load reads application config from AWS Secrets Manager or environment variables
 func Load() (Config, error) {
 	_ = godotenv.Load()
 
@@ -41,7 +40,7 @@ func Load() (Config, error) {
 
 	secretARN := os.Getenv("BACKEND_SECRET_ARN")
 
-	// Load from AWS Secrets Manager if ARN is set
+	// Load configuration from Secrets Manager when secret ARN is provided
 	if secretARN != "" {
 		ctx := context.Background()
 		awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.AWSRegion))
@@ -77,7 +76,7 @@ func Load() (Config, error) {
 		cfg.AllowedOrigin = getSecret("ALLOWED_ORIGIN", "allowedOrigin")
 		cfg.HTTPAddr = getSecret("HTTP_ADDR", "httpAddr")
 	} else {
-		// Load from environment variables
+		// Fallback to local environment variables
 		cfg.CognitoUserPoolID = os.Getenv("COGNITO_USER_POOL_ID")
 		cfg.CognitoClientID = os.Getenv("COGNITO_CLIENT_ID")
 		cfg.EMSAPIURL = os.Getenv("EMS_API_URL")
@@ -92,6 +91,7 @@ func Load() (Config, error) {
 		cfg.AllowedOrigin = "*"
 	}
 
+	// Validate required configuration values
 	if cfg.CognitoUserPoolID == "" {
 		return Config{}, fmt.Errorf("COGNITO_USER_POOL_ID is required")
 	}
@@ -105,7 +105,7 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// CognitoIssuer returns the issuer URL for Cognito
+// CognitoIssuer builds the Cognito OIDC issuer URL
 func (c Config) CognitoIssuer() string {
 	return fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s", c.AWSRegion, c.CognitoUserPoolID)
 }

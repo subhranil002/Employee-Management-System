@@ -15,18 +15,17 @@ func Setup(
 	employeeHandler *employee.Handler,
 	userHandler *user.Handler,
 ) *http.ServeMux {
-
 	mux := http.NewServeMux()
 
-	// Health check (public)
+	// Public health check route
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		response.JSON(w, http.StatusOK, true, "ok", nil)
 	})
 
-	// Profile route
+	// Protected user profile route
 	mux.HandleFunc("GET /profile", verifier.RequireAuth(userHandler.Profile))
 
-	// Employee CRUD routes
+	// Protected employee CRUD routes
 	mux.HandleFunc("GET /employees", verifier.RequireAuth(employeeHandler.List))
 	mux.HandleFunc("POST /employees", verifier.RequireAuth(employeeHandler.Create))
 	mux.HandleFunc("GET /employees/{id}", verifier.RequireAuth(employeeHandler.Get))
