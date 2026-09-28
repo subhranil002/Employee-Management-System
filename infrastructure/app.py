@@ -10,6 +10,7 @@ load_dotenv()
 
 account = os.environ.get("CDK_DEFAULT_ACCOUNT")
 
+
 region = os.environ.get("CDK_DEFAULT_REGION")
 
 if not account:
